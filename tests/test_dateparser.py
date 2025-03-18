@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 
-from parser.config import timeapiparams, timeapiurl
-from parser.dateparser import DateParser
+from src.parser.config import timeapiparams, timeapiurl
+from src.parser.date_parser import DateParser
 
 dayy = 17
 monthh = 2
@@ -25,7 +25,7 @@ def test_response() -> None:
         mock_get.assert_called_once_with(timeapiurl, params=timeapiparams, timeout=10)
 
 
-def test_get_day_month_year() -> None:
+def test_get_year_month_day() -> None:
     with patch("requests.get") as mock_get:
         mock_response = Mock()
         mock_response.json.return_value = {
@@ -36,9 +36,7 @@ def test_get_day_month_year() -> None:
         mock_get.return_value = mock_response
 
         parser = DateParser()
-        day, month, year = parser.get_current_day_month_year()
+        response = parser.get_current_year_month_day()
 
-        assert day == dayy
-        assert month == monthh
-        assert year == yearr
+        assert response == f"{yearr}-{monthh}-{dayy}"
         mock_get.assert_called_once_with(timeapiurl, params=timeapiparams, timeout=10)
