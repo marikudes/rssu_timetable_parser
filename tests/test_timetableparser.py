@@ -29,7 +29,7 @@ def test_response() -> None:
         mock_post.return_value = mock_response
 
         parser = TimeTableParser()
-        result = parser.response()
+        result = parser.response("2025-04-03")
 
         assert result == mock_response_data
         mock_post.assert_called_once()
@@ -42,7 +42,7 @@ def test_parse_timetable() -> None:
         mock_post.return_value = mock_response
 
         parser = TimeTableParser()
-        result = parser.parse_timetable()
+        result = parser.parse_timetable("2025-04-03")
 
         expected_result = [
             {
