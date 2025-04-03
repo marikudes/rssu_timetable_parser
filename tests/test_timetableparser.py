@@ -1,5 +1,6 @@
 from unittest.mock import Mock, patch
 
+from src.app.parser.config import headers, timetableparams, timetableurl
 from src.app.parser.timetableparser import TimeTableParser
 
 mock_response_data = {
@@ -29,10 +30,16 @@ def test_response() -> None:
         mock_post.return_value = mock_response
 
         parser = TimeTableParser()
-        result = parser.response("2025-04-03")
+        result = parser.response("2025-04-03", "GROUP-123")
 
         assert result == mock_response_data
-        mock_post.assert_called_once()
+        mock_post.assert_called_once_with(
+            timetableurl,
+            headers=headers,
+            data={**timetableparams, "date": "2025-04-03", "group": "GROUP-123"},
+            timeout=10,
+            verify=False,
+        )
 
 
 def test_parse_timetable() -> None:
@@ -42,10 +49,11 @@ def test_parse_timetable() -> None:
         mock_post.return_value = mock_response
 
         parser = TimeTableParser()
-        result = parser.parse_timetable("2025-04-03")
+        result = parser.parse_timetable("2025-04-03", "GROUP-123")
 
         expected_result = [
             {
+                "date": "2025-04-03",
                 "time": "08:00 - 09:30",
                 "subject": "Математика",
                 "category": "Лекция",

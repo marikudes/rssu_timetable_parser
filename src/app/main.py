@@ -11,20 +11,30 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.widget import Widget
 from parser.getgroupslist import GroupListParser
+from parser.timetableparser import TimeTableParser
 
 BASE_DIR = Path(__file__).parent.resolve()
 
 
 class ScheduleApp(App):
     def __init__(self) -> None:
-        json_path = BASE_DIR / "data" / "groups.json"
-        with json_path.open("w", encoding="utf-8") as file:
-            group_list = GroupListParser().response()["suggestions"]
-            json.dump(group_list, file, ensure_ascii=False, indent=4)
+        GroupListParser().save_data()
 
         json_path = BASE_DIR / "data" / "selected_group.json"
-        with json_path.open(encoding="utf-8") as file:
-            self.selected_group: str = json.load(file)[0]
+        self.selected_group = ""
+        try:
+            with json_path.open(encoding="utf-8") as file:
+                data = json.load(file)
+                if isinstance(data, list) and data:
+                    self.selected_group = data[0]
+                else:
+                    self.selected_group = ""
+        except (FileNotFoundError, json.JSONDecodeError, IndexError):
+            with json_path.open("w", encoding="utf-8") as file:
+                json.dump([], file, ensure_ascii=False, indent=4)
+
+        if self.selected_group:
+            TimeTableParser().save_data(group=self.selected_group)
 
         super().__init__()
         self.dropdown: DropDown | None = None
@@ -32,11 +42,7 @@ class ScheduleApp(App):
 
     def build(self) -> Widget:
         kv_path = BASE_DIR / "kv" / "my.kv"
-        try:
-            self.root = Builder.load_file(str(kv_path))
-        except FileNotFoundError:
-            print(f"Error: Could not find {kv_path}")
-            raise
+        self.root = Builder.load_file(str(kv_path))
         self.create_day_buttons(self.root)
 
         if self.root and hasattr(self.root.ids, "group_input"):
@@ -48,24 +54,20 @@ class ScheduleApp(App):
         json_path = BASE_DIR / "data" / "groups.json"
         try:
             with json_path.open(encoding="utf-8") as file:
-                return cast("list[str]", json.load(file))
-        except FileNotFoundError:
-            print(f"Error: Could not find {json_path}")
-            return []
-        except json.JSONDecodeError:
-            print(f"Error: Could not decode {json_path}")
+                groups = json.load(file)
+                return cast("list[str]", groups) if isinstance(groups, list) else []
+        except (FileNotFoundError, json.JSONDecodeError):
             return []
 
-    def load_schedule(self) -> dict[str, dict[str, Any]]:
+    def load_schedule(self) -> dict[str, list[dict[str, Any]]]:
         json_path = BASE_DIR / "data" / "schedule.json"
         try:
             with json_path.open(encoding="utf-8") as file:
-                return cast("dict[str, dict[str, Any]]", json.load(file))
-        except FileNotFoundError:
-            print(f"Error: Could not find {json_path}")
-            return {}
-        except json.JSONDecodeError:
-            print(f"Error: Could not decode {json_path}")
+                schedule = json.load(file)
+                if isinstance(schedule, dict):
+                    return cast("dict[str, list[dict[str, Any]]]", schedule)
+                return {}
+        except (FileNotFoundError, json.JSONDecodeError):
             return {}
 
     def get_days(self) -> list[str]:
@@ -85,18 +87,22 @@ class ScheduleApp(App):
         schedule = self.load_schedule()
         lessons_container = root.ids.lessons_container
         lessons_container.clear_widgets()
-        day_label = Label(text=selected_day, font_size="24sp", color=(1, 0, 0, 1))
-        lessons_container.add_widget(day_label)
 
-        if self.selected_group and self.selected_group in schedule:
-            group_schedule = schedule[self.selected_group]
-            lessons = group_schedule.get(selected_day, [])
-        else:
-            lessons = []
+        date_keys = list(schedule.keys())
+        days = self.get_days()
+        day_index = days.index(selected_day)
+
+        lessons = schedule[date_keys[day_index]] if date_keys and day_index < len(date_keys) else []
 
         if lessons:
             for lesson in lessons:
-                lesson_label = Label(text=f"{lesson['time']} - {lesson['subject']}")
+                lesson_text = (
+                    f"{lesson.get('time', 'N/A')} - {lesson.get('subject', 'N/A')}\n"
+                    f"{lesson.get('category', 'N/A')} - {lesson.get('teacher', 'N/A')}\n"
+                    f"{lesson.get('address', 'N/A')} {lesson.get('auditorium', 'N/A')}"
+                )
+                lesson_label = Label(text=lesson_text, halign="left", valign="top")
+                lesson_label.text_size = (lessons_container.width, None)
                 lessons_container.add_widget(lesson_label)
         else:
             no_lessons_label = Label(text="Нет уроков", font_size="18sp", color=(0.5, 0.5, 0.5, 1))
@@ -127,7 +133,7 @@ class ScheduleApp(App):
         json_path = BASE_DIR / "data" / "selected_group.json"
         text_input.text = group
         self.selected_group = group
-
+        TimeTableParser().save_data(group=self.selected_group)
         with json_path.open("w", encoding="utf-8") as file:
             json.dump([group], file, ensure_ascii=False, indent=4)
 

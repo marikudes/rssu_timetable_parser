@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, cast
 
 import requests
@@ -9,10 +10,10 @@ from .config import headers, timetableparams, timetableurl
 
 
 class TimeTableParser:
-    def response(self, date: str) -> dict[str, Any]:
+    def response(self, date: str, group: str) -> dict[str, Any]:
         params = timetableparams.copy()
         params["date"] = date
-
+        params["group"] = group
         response = requests.post(
             timetableurl,
             headers=headers,
@@ -22,8 +23,8 @@ class TimeTableParser:
         )
         return cast("dict[str, Any]", response.json())
 
-    def parse_timetable(self, date: str) -> list[dict[str, str]]:
-        data = self.response(date)
+    def parse_timetable(self, date: str, group: str) -> list[dict[str, str]]:
+        data = self.response(date, group)
         html_content = data.get("html", "")
         soup = BeautifulSoup(html_content, "html.parser")
 
@@ -73,19 +74,20 @@ class TimeTableParser:
 
         return timetable_items
 
-    def get_weekly_timetable(self) -> dict[str, list[dict[str, str]]]:
+    def get_weekly_timetable(self, group: str) -> dict[str, list[dict[str, str]]]:
         today = datetime.now(UTC)
         start_of_week = today - timedelta(days=today.weekday())
 
         weekly_timetable = {}
         for i in range(7):
             date = (start_of_week + timedelta(days=i)).strftime("%Y-%m-%d")
-            weekly_timetable[date] = self.parse_timetable(date)
+            weekly_timetable[date] = self.parse_timetable(date, group)
 
         return weekly_timetable
 
+    def save_data(self, group: str) -> None:
+        file_path = Path(__file__).parent.parent / "data" / "schedule.json"
+        data = self.get_weekly_timetable(group)
 
-if __name__ == "__main__":
-    parser = TimeTableParser()
-    weekly_timetable = parser.get_weekly_timetable()
-    print(json.dumps(weekly_timetable, ensure_ascii=False, indent=4))
+        with file_path.open("w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=4)
