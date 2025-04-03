@@ -23,7 +23,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = "parser,tests"
+files = "src,tests"
 ignore_missing_imports = true
 disallow_subclassing_any = false
 

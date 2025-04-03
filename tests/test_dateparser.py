@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 
-from src.parser.config import timeapiparams, timeapiurl
-from src.parser.date_parser import DateParser
+from src.app.parser.config import timeapiparams, timeapiurl
+from src.app.parser.date_parser import DateParser
 
 dayy = 17
 monthh = 2

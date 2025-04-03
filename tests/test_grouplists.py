@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 
-from src.parser.config import getgrouplisturl, headers
-from src.parser.getgroupslist import GroupListParser
+from src.app.parser.config import getgrouplisturl, headers
+from src.app.parser.getgroupslist import GroupListParser
 
 
 def test_group_list_parser_response() -> None:

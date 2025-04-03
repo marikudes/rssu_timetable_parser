@@ -1,7 +1,8 @@
 from typing import Any, cast
 
 import requests
-from config import timeapiparams, timeapiurl
+
+from .config import timeapiparams, timeapiurl
 
 
 class DateParser:

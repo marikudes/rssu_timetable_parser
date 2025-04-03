@@ -1,6 +1,6 @@
 from unittest.mock import Mock, patch
 
-from src.parser.timetableparser import TimeTableParser
+from src.app.parser.timetableparser import TimeTableParser
 
 mock_response_data = {
     "html": """

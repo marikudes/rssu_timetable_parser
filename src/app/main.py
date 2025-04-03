@@ -10,14 +10,23 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.widget import Widget
+from parser.getgroupslist import GroupListParser
 
 BASE_DIR = Path(__file__).parent.resolve()
 
 
 class ScheduleApp(App):
     def __init__(self) -> None:
+        json_path = BASE_DIR / "data" / "groups.json"
+        with json_path.open("w", encoding="utf-8") as file:
+            group_list = GroupListParser().response()["suggestions"]
+            json.dump(group_list, file, ensure_ascii=False, indent=4)
+
+        json_path = BASE_DIR / "data" / "selected_group.json"
+        with json_path.open(encoding="utf-8") as file:
+            self.selected_group: str = json.load(file)[0]
+
         super().__init__()
-        self.selected_group: str = ""
         self.dropdown: DropDown | None = None
         self.root: Widget | None = None
 
@@ -29,6 +38,9 @@ class ScheduleApp(App):
             print(f"Error: Could not find {kv_path}")
             raise
         self.create_day_buttons(self.root)
+
+        if self.root and hasattr(self.root.ids, "group_input"):
+            self.root.ids.group_input.text = self.selected_group
         self.update_schedule(self.root, "Понедельник")
         return self.root
 
@@ -112,8 +124,13 @@ class ScheduleApp(App):
         self.update_group_suggestions(text_input)
 
     def select_group(self, group: str, text_input: TextInput) -> None:
+        json_path = BASE_DIR / "data" / "selected_group.json"
         text_input.text = group
         self.selected_group = group
+
+        with json_path.open("w", encoding="utf-8") as file:
+            json.dump([group], file, ensure_ascii=False, indent=4)
+
         if self.dropdown:
             self.dropdown.dismiss()
         if self.root:

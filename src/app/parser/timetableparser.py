@@ -3,18 +3,16 @@ from typing import Any, cast
 
 import requests
 from bs4 import BeautifulSoup
-from config import headers, timetableparams, timetableurl
-from date_parser import DateParser
+
+from .config import headers, timetableparams, timetableurl
 
 
 class TimeTableParser:
     def response(self) -> dict[str, Any]:
-        params = timetableparams.copy()
-        params["date"] = DateParser().get_current_year_month_day()
         response = requests.post(
             timetableurl,
             headers=headers,
-            data=params,
+            data=timetableparams,
             timeout=10,
             verify=False,
         )
@@ -73,3 +71,4 @@ class TimeTableParser:
 
 if __name__ == "__main__":
     print(json.dumps(TimeTableParser().parse_timetable(), ensure_ascii=False, indent=4))
+    print(TimeTableParser().response())

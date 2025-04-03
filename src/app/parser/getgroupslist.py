@@ -1,7 +1,8 @@
 from typing import Any, cast
 
 import requests
-from config import getgrouplisturl, headers
+
+from .config import getgrouplisturl, headers
 
 
 class GroupListParser:
