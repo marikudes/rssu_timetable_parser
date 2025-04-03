@@ -1,0 +1,23 @@
+BoxLayout:
+    orientation: 'vertical'
+    padding: 10
+    spacing: 10
+
+    BoxLayout:
+        size_hint_y: None
+        height: '48dp'
+        TextInput:
+            id: group_input
+            hint_text: 'Выберите группу'
+            on_text: app.update_group_suggestions(self)
+            on_focus: if self.focus: app.show_group_dropdown(self)
+
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: None
+        height: '48dp'
+        id: days_container
+
+    BoxLayout:
+        id: lessons_container
+        orientation: 'vertical'
