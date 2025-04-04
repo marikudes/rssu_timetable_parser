@@ -41,3 +41,11 @@ repos:
       types_or: [python, pyi]
       require_serial: true
       pass_filenames: false
+- repo: local
+  hooks:
+    - id: reset-jsons
+      name: Reset JSON files
+      entry: bash -c "echo '{}' > src/app/data/groups.json && echo '{}' > src/app/data/schedule.json && echo '{}' > src/app/data/selected_group.json"
+      language: system
+      types: [file]
+      files: ^src/app/data/.*\.json$

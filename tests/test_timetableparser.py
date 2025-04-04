@@ -1,4 +1,8 @@
-from unittest.mock import Mock, patch
+import json
+from unittest.mock import AsyncMock, patch
+
+import aiohttp
+import pytest
 
 from src.app.parser.config import headers, timetableparams, timetableurl
 from src.app.parser.timetableparser import TimeTableParser
@@ -23,33 +27,36 @@ mock_response_data = {
 }
 
 
-def test_response() -> None:
-    with patch("requests.post") as mock_post:
-        mock_response = Mock()
-        mock_response.json.return_value = mock_response_data
-        mock_post.return_value = mock_response
+@pytest.mark.asyncio
+async def test_response() -> None:
+    parser = TimeTableParser()
+    mock_session = AsyncMock(spec=aiohttp.ClientSession)
+    mock_response = AsyncMock()
 
-        parser = TimeTableParser()
-        result = parser.response("2025-04-03", "GROUP-123")
+    async def text_coroutine() -> str:
+        return json.dumps(mock_response_data)
 
-        assert result == mock_response_data
-        mock_post.assert_called_once_with(
-            timetableurl,
-            headers=headers,
-            data={**timetableparams, "date": "2025-04-03", "group": "GROUP-123"},
-            timeout=10,
-            verify=False,
-        )
+    mock_session.post.return_value.__aenter__.return_value = mock_response
+    mock_response.text = text_coroutine
+
+    result = await parser.response(mock_session, "2025-04-03", "GROUP-123")
+
+    assert result == mock_response_data
+    mock_session.post.assert_called_once_with(
+        timetableurl,
+        headers=headers,
+        data={**timetableparams, "date": "2025-04-03", "group": "GROUP-123"},
+        ssl=False,
+    )
 
 
-def test_parse_timetable() -> None:
-    with patch("requests.post") as mock_post:
-        mock_response = Mock()
-        mock_response.json.return_value = mock_response_data
-        mock_post.return_value = mock_response
+@pytest.mark.asyncio
+async def test_parse_timetable() -> None:
+    parser = TimeTableParser()
+    mock_session = AsyncMock(spec=aiohttp.ClientSession)
 
-        parser = TimeTableParser()
-        result = parser.parse_timetable("2025-04-03", "GROUP-123")
+    with patch.object(parser, "response", return_value=mock_response_data) as mock_response_method:
+        result = await parser.parse_timetable(mock_session, "2025-04-03", "GROUP-123")
 
         expected_result = [
             {
@@ -65,4 +72,4 @@ def test_parse_timetable() -> None:
         ]
 
         assert result == expected_result
-        mock_post.assert_called_once()
+        mock_response_method.assert_called_once_with(mock_session, "2025-04-03", "GROUP-123")

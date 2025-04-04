@@ -11,6 +11,8 @@ requests = "^2.32.3"
 certifi = "^2025.1.31"
 kivy = "^2.3.1"
 bs4 = "^0.0.2"
+aiohttp = "^3.11.16"
+pytest-asyncio = "^0.26.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.3.4"
