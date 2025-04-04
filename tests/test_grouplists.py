@@ -1,19 +1,25 @@
-from unittest.mock import Mock, patch
+import json
+from unittest.mock import AsyncMock
+
+import aiohttp
+import pytest
 
 from src.app.parser.config import getgrouplisturl, headers
 from src.app.parser.getgroupslist import GroupListParser
 
 
-def test_group_list_parser_response() -> None:
-    with patch("requests.post") as mock_post:
-        mock_response = Mock()
-        mock_response.json.return_value = {"groups": ["Группа 1А", "Группа 1Б", "Группа 2А"]}
-        mock_post.return_value = mock_response
+@pytest.mark.asyncio
+async def test_group_list_parser_response() -> None:
+    parser = GroupListParser()
+    mock_session = AsyncMock(spec=aiohttp.ClientSession)
+    mock_response = AsyncMock()
 
-        parser = GroupListParser()
-        result = parser.response()
+    mock_session.post.return_value.__aenter__.return_value = mock_response
+    mock_response.text.return_value = json.dumps(
+        {"suggestions": ["Группа 1А", "Группа 1Б", "Группа 2А"]}
+    )
 
-        assert result == {"groups": ["Группа 1А", "Группа 1Б", "Группа 2А"]}
-        mock_post.assert_called_once_with(
-            getgrouplisturl, headers=headers, timeout=10, verify=False
-        )
+    result = await parser.response(mock_session)
+
+    assert result == {"suggestions": ["Группа 1А", "Группа 1Б", "Группа 2А"]}
+    mock_session.post.assert_called_once_with(getgrouplisturl, headers=headers, ssl=False)

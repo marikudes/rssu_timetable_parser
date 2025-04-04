@@ -1,30 +1,40 @@
+import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
-import requests
+import aiohttp
 from bs4 import BeautifulSoup
 
 from .config import headers, timetableparams, timetableurl
 
 
 class TimeTableParser:
-    def response(self, date: str, group: str) -> dict[str, Any]:
+    async def response(
+        self,
+        session: aiohttp.ClientSession,
+        date: str,
+        group: str,
+    ) -> dict[str, Any]:
         params = timetableparams.copy()
         params["date"] = date
         params["group"] = group
-        response = requests.post(
-            timetableurl,
-            headers=headers,
-            data=params,
-            timeout=10,
-            verify=False,
-        )
-        return cast("dict[str, Any]", response.json())
 
-    def parse_timetable(self, date: str, group: str) -> list[dict[str, str]]:
-        data = self.response(date, group)
+        async with session.post(timetableurl, headers=headers, data=params, ssl=False) as response:
+            text = await response.text()
+            try:
+                return cast("dict[str, Any]", json.loads(text))
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Expected JSON:\n{text[:300]}") from e
+
+    async def parse_timetable(
+        self,
+        session: aiohttp.ClientSession,
+        date: str,
+        group: str,
+    ) -> list[dict[str, str]]:
+        data = await self.response(session, date, group)
         html_content = data.get("html", "")
         soup = BeautifulSoup(html_content, "html.parser")
 
@@ -74,20 +84,26 @@ class TimeTableParser:
 
         return timetable_items
 
-    def get_weekly_timetable(self, group: str) -> dict[str, list[dict[str, str]]]:
+    async def get_weekly_timetable(self, group: str) -> dict[str, list[dict[str, str]]]:
         today = datetime.now(UTC)
         start_of_week = today - timedelta(days=today.weekday())
 
-        weekly_timetable = {}
-        for i in range(7):
-            date = (start_of_week + timedelta(days=i)).strftime("%Y-%m-%d")
-            weekly_timetable[date] = self.parse_timetable(date, group)
+        dates = [(start_of_week + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
 
-        return weekly_timetable
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+            tasks = [self.parse_timetable(session, date, group) for date in dates]
+            results = await asyncio.gather(*tasks)
 
-    def save_data(self, group: str) -> None:
+            # Используем словарное включение вместо цикла
+            timetable: dict[str, list[dict[str, str]]] = dict(zip(dates, results, strict=False))
+
+            return timetable
+
+    async def save_data(self, group: str) -> None:
         file_path = Path(__file__).parent.parent / "data" / "schedule.json"
-        data = self.get_weekly_timetable(group)
-
+        data = await self.get_weekly_timetable(group)
         with file_path.open("w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
+
+    def save_data_sync(self, group: str) -> None:
+        asyncio.run(self.save_data(group))

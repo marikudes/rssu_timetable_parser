@@ -35,12 +35,14 @@ class ScheduleApp(App):
         self.groups_cache: list[str] | None = None
         self.schedule_cache: dict[str, list[dict[str, str]]] | None = None
         self._load_selected_group()
+        self.tableparser = TimeTableParser()
+        self.groupsparser = GroupListParser()
         Clock.schedule_once(self._load_initial_data, 0)
 
     def _load_initial_data(self, _dt: float) -> None:
-        GroupListParser().save_data()
+        self.groupsparser.save_data_sync()  # Синхронный вызов
         if self.selected_group:
-            TimeTableParser().save_data(group=self.selected_group)
+            self.tableparser.save_data_sync(group=self.selected_group)  # Синхронный вызов
 
     def _validate_selected_group_data(self, data: list[str]) -> str:
         if not data:
@@ -177,7 +179,10 @@ class ScheduleApp(App):
         json_path = BASE_DIR / "data" / "selected_group.json"
         text_input.text = group
         self.selected_group = group
-        TimeTableParser().save_data(group=self.selected_group)
+
+        # Синхронный вызов
+        self.tableparser.save_data_sync(group=self.selected_group)
+
         with json_path.open("w", encoding="utf-8") as file:
             json.dump([group], file, ensure_ascii=False, indent=4)
         self.schedule_cache = None
